@@ -20,10 +20,9 @@ def verify_api_key(x_api_key: str = Header(None)):
         raise HTTPException(status_code=403, detail="Invalid API Key")
     return x_api_key
 
-@app.get("/")
-def read_root():
+@app.api_route("/", methods=["GET", "POST"])
+def health_check():
     return {"status": "online", "message": "Intelligent Call Center API Ready"}
-
 @app.post("/upload")
 async def upload_audio(file: UploadFile = File(...), token: str = Depends(verify_api_key)):
     task_id = str(uuid.uuid4())
