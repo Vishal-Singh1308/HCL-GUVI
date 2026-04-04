@@ -4,7 +4,22 @@ import uuid
 import redis
 import json
 import os
+from fastapi import Header, Depends
 
+# 1. This pulls your secret key from Railway's Environment Variables
+SECRET_API_KEY = os.getenv("APP_API_KEY", "default_secret_key_123")
+
+# 2. This function checks the 'X-API-KEY' header in the request
+def verify_api_key(x_api_key: str = Header(None)):
+    if x_api_key != SECRET_API_KEY:
+        raise HTTPException(status_code=403, detail="Invalid API Key")
+    return x_api_key
+
+# 3. Apply it to your upload route
+@app.post("/upload")
+async def upload_audio(file: UploadFile = File(...), token: str = Depends(verify_api_key)):
+    # ... your existing code ...
+    return {"task_id": task_id, "message": "Processing started"}
 app = FastAPI(title="Intelligent Call Center Analytics")
 db = redis.Redis(host='localhost', port=6379, db=1)
 
