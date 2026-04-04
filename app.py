@@ -1,53 +1,46 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
-from tasks import run_analytics_task
+from fastapi import FastAPI, UploadFile, File, Header, HTTPException, Depends
 import uuid
+import os
 import redis
 import json
-import os
-from fastapi import Header, Depends
+from tasks import run_analytics_task
 
-# 1. This pulls your secret key from Railway's Environment Variables
-SECRET_API_KEY = os.getenv("APP_API_KEY", "default_secret_key_123")
+# INITIALIZE APP FIRST (Fixes NameError)
+app = FastAPI()
 
-# 2. This function checks the 'X-API-KEY' header in the request
+# Setup Redis connection for Railway
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+db = redis.Redis.from_url(REDIS_URL)
+
+# SECURITY: API Key check
+SECRET_API_KEY = os.getenv("APP_API_KEY", "VISHAL_SECURE_2026")
+
 def verify_api_key(x_api_key: str = Header(None)):
     if x_api_key != SECRET_API_KEY:
         raise HTTPException(status_code=403, detail="Invalid API Key")
     return x_api_key
-app = FastAPI() 
 
 @app.get("/")
-def home():
-    return {"message": "Hello World"}
-# 3. Apply it to your upload route
+def read_root():
+    return {"status": "online", "message": "Intelligent Call Center API Ready"}
+
 @app.post("/upload")
 async def upload_audio(file: UploadFile = File(...), token: str = Depends(verify_api_key)):
-    # ... your existing code ...
-    return {"task_id": task_id, "message": "Processing started"}
-app = FastAPI(title="Intelligent Call Center Analytics")
-db = redis.Redis(host='localhost', port=6379, db=1)
-
-@app.post("/upload")
-async def upload_audio(file: UploadFile = File(...)):
-    # Save file
     task_id = str(uuid.uuid4())
-    file_location = f"temp_{file.filename}"
     
-    with open(file_location, "wb+") as file_object:
-        file_object.write(file.file.read())
-
-    # Trigger async task
-    run_analytics_task.delay(task_id, file_location)
+    # Save file temporarily for processing
+    file_path = f"temp_{task_id}_{file.filename}"
+    with open(file_path, "wb") as buffer:
+        buffer.write(await file.read())
     
-    return {"task_id": task_id, "message": "Processing started"}
+    # Push to Celery Worker (Asynchronous processing)
+    run_analytics_task.delay(task_id, file_path)
+    
+    return {"task_id": task_id, "message": "Analysis started"}
 
 @app.get("/status/{task_id}")
 async def get_status(task_id: str):
-    data = db.get(task_id)
-    if not data:
-        return {"status": "processing"}
-    return json.loads(data)
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    result = db.get(task_id)
+    if result:
+        return json.loads(result)
+    return {"status": "processing", "message": "AI is still analyzing the call..."}
