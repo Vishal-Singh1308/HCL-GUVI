@@ -7,3 +7,4 @@ python-dotenv==1.0.1
 celery==5.3.6
 redis==5.0.3
 openai==1.14.3
+av==11.0.0 --only-binary=:all:
