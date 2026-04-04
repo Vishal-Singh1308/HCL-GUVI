@@ -1,20 +1,20 @@
+import os
 from celery import Celery
-from models import process_audio_to_intel
 import redis
 import json
+from models import process_audio_to_intel
 
-celery_app = Celery('tasks', broker='redis://localhost:6379/0')
-db = redis.Redis(host='localhost', port=6379, db=1)
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+celery_app = Celery("tasks", broker=REDIS_URL)
+db = redis.Redis.from_url(REDIS_URL)
 
-@celery_app.task
+@celery_app.task(name="tasks.run_analytics_task")
 def run_analytics_task(task_id, file_path):
     try:
-        transcript, analysis = process_audio_to_intel(file_path)
-        result = {
-            "status": "completed",
-            "transcript": transcript,
-            "analysis": analysis
-        }
-        db.set(task_id, json.dumps(result))
+        # This calls the AI logic from your models file
+        analysis_results = process_audio_to_intel(file_path)
+        db.set(task_id, json.dumps(analysis_results))
+        if os.path.exists(file_path):
+            os.remove(file_path)
     except Exception as e:
         db.set(task_id, json.dumps({"status": "failed", "error": str(e)}))
