@@ -27,7 +27,6 @@ async def universal_health_check():
         "message": "Intelligent Call Center API Ready",
         "note": "HCL Tester Verified"
     }
-    return {"status": "online", "message": "Intelligent Call Center API Ready"}
 @app.post("/upload")
 async def upload_audio(file: UploadFile = File(...), token: str = Depends(verify_api_key)):
     task_id = str(uuid.uuid4())
