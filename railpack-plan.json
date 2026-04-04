@@ -1,0 +1,11 @@
+{
+  "version": "1.0",
+  "packages": [
+    "python@3.10",
+    "ffmpeg",
+    "pkg-config"
+  ],
+  "variables": {
+    "PYTHON_VERSION": "3.10"
+  }
+}
